@@ -3,6 +3,7 @@
 #' @return shinyapp UI
 #' @export
 #' @import shiny
+#' @import base equimapackage
 #' @importFrom leaflet leafletOutput
 #' @importFrom utils read.csv
 #' @examples
@@ -43,11 +44,29 @@ shinnyappUI <-fluidPage(navbarPage("Menu",
                                    tabPanel("Prediction",
                                             sidebarLayout(
                                               sidebarPanel(
+                                                width = 12,
                                                 #radioButtons("Year",label = "Year", choices = c("2012", "2017")),
                                                 #par d??faut, liste de tous les ??quipements de toutes les cat??gories
                                                 selectInput("prediction",label = "prediction :" ,choices = c("pauvrete", "Niveau_de_vie","crime_rate"),selected = NULL),
-                                                checkboxGroupInput( "predictors",label = "predictors :" ,choices = names(data_dpt)[-c(1, 2)],selected = names(data_dpt)[-c(1, 2)]),
-                                                actionButton("Print2", "Go")
+                                                fluidRow(
+                                                  column(
+                                                    width = 4,
+                                                    checkboxGroupInput( "predictors1",label = "Justice :" ,choices = eq_per_category %>% filter(cat=="Justice") %>% pull(eq),selected = eq_per_category$eq),
+                                                    checkboxGroupInput( "predictors2",label = "Transport :" ,choices = eq_per_category %>% filter(cat=="Transport") %>% pull(eq),selected = eq_per_category$eq)
+                                                  ),
+                                                  column(
+                                                    width = 4,
+                                                    checkboxGroupInput( "predictors3",label = "Healthcare :" ,choices = eq_per_category %>% filter(cat=="Healthcare") %>% pull(eq),selected = eq_per_category$eq),
+                                                    checkboxGroupInput( "predictors4",label = "Education :" ,choices = eq_per_category %>% filter(cat=="Education") %>% pull(eq),selected = eq_per_category$eq)
+                                                  ),
+                                                  column(
+                                                    width = 4,
+                                                    checkboxGroupInput( "predictors5",label = "Sport :" ,choices = eq_per_category %>% filter(cat=="Sport") %>% pull(eq),selected = eq_per_category$eq),
+                                                    checkboxGroupInput( "predictors6",label = "Divers :" ,choices = eq_per_category %>% filter(cat=="Divers") %>% pull(eq),selected = eq_per_category$eq)
+                                                  ),
+                                                  checkboxGroupInput( "predictors7",label = "Global :" ,choices = eq_per_category %>% filter(cat=="Global") %>% pull(eq),selected = eq_per_category$eq),
+
+                                                  actionButton("Print2", "Go"))
                                               ),
                                               mainPanel(
                                                 leafletOutput("mypred")

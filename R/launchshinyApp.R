@@ -8,3 +8,4 @@
 launchshinyApp <- function(){
   shiny:: shinyApp(ui = shinnyappUI, server = shinnyappServer)
 }
+
