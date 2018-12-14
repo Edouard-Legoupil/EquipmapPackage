@@ -7,8 +7,8 @@
 #' @return the best model to predict the indicator considered and the map that gies with itt
 #' @export
 #' @importFrom rlang enquo
-#' @importFrom dplyr select Glmnet
-#' @importFrom Glmnet lm
+#' @importFrom dplyr select enquo
+#' @importFrom stats lm
 #' @importFrom utils capture.output
 #' @importFrom base invisible
 #' @examples

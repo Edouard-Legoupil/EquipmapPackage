@@ -38,11 +38,32 @@ shinnyappServer <- function(input, output, session) {
     })
   })
 
+  predictor_relevant <- reactive({
+    input$Print3
+    isolate({
+      equipment_stepwise(input$prediction_advise)
+    })
+  })
+
+  map_indic <- reactive({
+    input$Print3
+    isolate({
+      #equipment_stepwise(input$prediction_advise)
+      get_map(eq=input$prediction_advise, data=indicateurs)
+    })
+  })
+
   #les output correspondant aux 3 maps reéactives
-  output$mymap <- leaflet::renderLeaflet({
+  output$mymap <- renderLeaflet({
     map()
   })
   output$mypred <- renderLeaflet({
     map_pred()
+  })
+  output$myadvise <- renderDataTable({
+    predictor_relevant()
+  })
+  output$map_indic <- renderLeaflet({
+    map_indic()
   })
 }
