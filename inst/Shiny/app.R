@@ -1,0 +1,1 @@
+Equimapackage::launchshinyApp()

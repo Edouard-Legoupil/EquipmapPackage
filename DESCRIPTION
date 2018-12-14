@@ -1,0 +1,29 @@
+Package: Equimapackage
+Title: Equipmap Plots the Level of Equipment per Capita across
+    French Territory
+Version: 0.0.0.9000
+Authors@R: 
+    person(given = "Victoire",
+           family = "de Chabalier",
+           role = c("aut", "cre"),
+           email = "victoire.de-chabalier@polyetchnique.edu")
+Description: Contains functions that aim to identify areas
+    lacking certain types of equipment across time.
+License: GPL-3
+Depends: 
+    R (>= 3.5)
+Imports: 
+    dplyr,
+    leaflet,
+    magrittr,
+    stats,
+    rgdal,
+    shiny
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: 
+    knitr
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.1.1
