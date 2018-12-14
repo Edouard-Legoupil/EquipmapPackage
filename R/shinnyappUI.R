@@ -35,8 +35,8 @@ shinnyappUI <-fluidPage(navbarPage("Menu",
                                                 actionButton("Print3", "Go")
                                               ),
                                               mainPanel(
-                                                #dataTableOutput("myadvise"),
-                                                #leafletOutput("map_indic")
+                                                dataTableOutput("myadvise"),
+                                                leafletOutput("map_indic")
                                               )
                                             )
                                    ),
