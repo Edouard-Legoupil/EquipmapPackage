@@ -1,5 +1,5 @@
 ---
-title: "Vignette Title"
+title: "How to use our package"
 author: "Vignette Author"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
@@ -9,7 +9,243 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r}
 
+```{r}
+#library(Equipmapackage)
 ```
 
+This package aims to visualise and analyse INSEE data about equipment levels, demographics, and economic indexes in France to propose action plans for public spending orientation. The objective is to shed light on potential interactions between complicated economic indexes and equipment levels, which could help orientate public spending towards certain equipment spending and in certain departments. 
+
+In this file, we will first go through the decisions and manipulations made regarding the preprocessing of INSEE data, which served as the foundations for the analysis of this project. Then, we will guide you through the logic and the coding behind our data analysis to extract useful information. Lastly, we will present our Shiny App that serves as the presentation and exploration platform for the analyses we conducted. In the end, you will be able to navigate through the processed dataset through our Shiny App and extract useful and previously hidden information that could be used to direct public spending.
+
+
+#I. Data Formatting
+
+The INSEE datasets are aggregated at different demographic levels (communes, departements, regions, etc.). We chose to scale our project to a department level as it is the right balance between a high precision and a sufficiently large scale to be interesting to analyse as departments are the smallest "collectivite territoriale" to have decision-making power over the levels of equipment. The key to the preprocessing step was to end up with three datasets (one map, one equipment demographics, and one indicator dataset) that are of the same format in order to be exploitable in the analysis and visualisation steps.
+
+## Equipment dataset
+
+We performed an initial data clean on datasets found on the INSEE website in order to obtain a condensed dataset with information relevant to our predictions and analysis.
+
+For this, we follow the following steps
+
+(1) We merge the datasets in order to centralize the information we will use to predict equipment levels based on datasets found on the INSEE website which give:
+- The equipment level in 2017 per region, department, commune, aire urbaine and unite urbaine
+- The French population in 2014 and the cut down of this population according to certain groups ("demographics")
+
+(2) We filter the equipments that we are interested in based on the number of facilities. We chose to study 5 equipment types: Education, Healthcare, Transport, Justice, and Sports facilities, given their public spending nature and the likely impat and correlation they may have on the economic indexes that we study.
+
+(3) We targeted certain users for each equipment.Indeed, taking a closer look at our population dataset, we observed a large difference in distribution of groups of population accross departments (eg more young people in the the 78 (Yvelines) and older people in the 76 (Seine-Maritime)) so a different number of potential users for each equipment. 
+For example, for maternities we targeted women aged from 15 to 45. 
+
+(4) We add a variable to our datset which gives the equipment level per potential users.  
+We decided to study the density of equipment per capita rather than looking at the equipment level in absolute terms, in order to have an idea of relative measures when orientating public spending. 
+
+(5) We transform our modified dataset into a CSV which is stored in the external data folder of our package. Therefore we use the already modified dataset as an input as each of our functions.
+
+## Indicator dataset
+
+Navigating through the INSEE database, we extracted some interesting economic indexes that had departmental level information in order to cross-check them with our equipment departmental data. We also merged the criminality levels (expressed as facts reported by the police) into our indicators dataset.
+
+Again, we export the preprocessed dataset as a CSV file that will be used in both the analysis and the visualisation steps.
+
+## Map (shapefile) dataset
+
+Through research, we obtained both a dense and a simplified database that contained shapefiles of the departments of France. 
+The dense database was inexploitable but it's shapefile precision level was of the desired level, compared to that of the simplified one, which was useable but had a 100m discrepancy on the borders. 
+
+Through modifications, we treated the simplified model's discrepancy by basing ourselves on the shapes of the complicated one, while keeping its simplicity.
+
+We filtered out "Outre-mer" departments to focus solely on Metropolitan France, and corrected an error in the simplified dataset, whereby "Lyon" was considered as a department. 
+
+We then arranged the shapefile dataset by departments in order to be properly exported into leaflet for the Shiny App. 
+
+
+#II. Data Analysis
+
+## Advise
+
+With the datasets complete, we can dive into the analysis of the data. With one row per department and each equipment level and index as columns, we can perform machine learning algortihms to obtain the statistically optimised equipments that best describe the economic indexes. 
+
+###Stepwise regression selection function
+
+We perform stepwise regression modelling to obtain a prediction model of each economic index that is optimised in terms of goodnesss to fit vs. complexity. Through iterative minimisations of the AIC, our algorithm selects the equipments that are the best at simply predicting the economic index, which is performed by the equipment_stepwise function:
+
+```{r}
+equipment_stepwise <- function(index, eq = data_dpt, ind = indicateurs){ # ------------ (1)
+  index <- enquo(index)
+  data_index <-  eq %>%
+    dplyr::select(-c(1,2))
+  col <- ind %>% dplyr::select(column_name = !!index) # ------------------------------- (2)
+  data_index <- data_index %>% dplyr::mutate(indicator = col$column_name) # ----------- (3)
+  pred_index <- stat::lm(indicator~., data = data_index) # ---------------------------- (4)
+  invisible(capture.output(pred_index_step <- step(pred_index, direction="both"))) # -- (5)
+  pred_index_opt <- stat::lm(formula(pred_index_step), data = data_index) # ----------- (6)
+  eq_significant <- pred_index_opt$coefficients
+  eq_significant <- eq_significant[-1]
+  A <- as.data.frame(eq_significant)
+  res <- cbind(as.data.frame(row.names(A)),A) 
+  res <- res %>% rename(equipment="row.names(A)",coef = "eq_significant") # ----------- (7)
+  return(res) # ----------------------------------------------------------------------- (8)
+}
+```
+
+Description
+
+(1) The function takes as input the economic index that we want to predict using the most relevant equipments
+(2) Based on the index inputted, we modify the indicateur dataset to have only the index wanted
+(3) We merge the indicateur and equipment dataset into one in order to perform regression modelling
+(4) We perform a first regression modelling taking into account the entirity of the equipments studied
+(5) We perform a stepwise algorith on the full model to iteratively select the most useful equipments to predict the index inputted. 
+(6) Using the optimised model, we perform another regression model to obtain the coefficients of the model and create the first part of the function output
+(7) We format the output dataframe to obtain the coefficient names and values, for simplicity in importation in the Shiny App
+(8) The function returns the dataframe containing the optimised equipments and their coefficients for the given index inputted
+
+Combining this information with the departmental equipment levels per inhabitants, we can identify departments that are lacking in certain equipments that are highly correlated with the indexes studied (more about this in III. Data Visualisation & Shiny App)
+
+## Remarks
+
+The index studied are complex interactions of many various tangible and intangible factors, so simply investing more public spending in the identified equipments won't directly solve the problem. However, in the long run and considering other elements, the statistical significance of such equipments suggest that they are worthwhile looking into. The solution is therefore a long term investment and should be treated as such. 
+
+
+#III. Data visualisation & Shiny App
+
+With our data preprocessed and our analysis functions done, we proceed towards the visualisation step. Using a Shiny App, we aim display in various tabs the visual representation of our analyses. 
+
+## Homepage
+
+This tab is a user manual of the Shiny App. It explains the functionalities and the mechanisms of each tabs and serves as a guide for the user to better manipulate the app and obtain the desired results.
+
+## Visualise
+
+In this tab of the Shiny App, we aim to map the equipment per capita levels for the departments in order to visualise departments that are lacking in terms of equipment levels, relative to the rest of Metropolitan France. This enables the user to detect zones that are lacking in terms of investment, with regards to the various equipments chosen.
+
+To translate and visualise the shapefiles and the equipment data into our Shiny App, we created the Get_map function. This function is reactive to the inputs decided by the user in the Shiny App:
+
+```{r}
+get_map <- function(eq, data = data_dpt) { # ------------------------------------------ (1) 
+    dist <- data %>% pull(eq) # ------------------------------------------------------- (2) 
+    bins <- quantile(dist, probs = c(0:6) / 6) # -------------------------------------- (3) 
+    bins <- bins[!duplicated(bins)]
+    pal <- colorBin("YlOrRd", domain = dist, bins = bins) # --------------------------- (4)
+    
+    res <- leaflet(data = departments_shp) %>% # -------------------------------------- (5)
+      addTiles() %>% 
+      setView(lat = 47.8, # ----------------------------------------------------------- (6)
+              lng = 2.5,
+              zoom = 5) %>%
+      addPolygons( # ------------------------------------------------------------------ (7)
+        data = departments_shp,
+        fillColor = ~ pal(dist),
+        weight = 1,
+        opacity = 0.5,
+        color = "white",
+        dashArray = "3",
+        fillOpacity = 0.7,
+        highlight = highlightOptions(color = "red", bringToFront = TRUE),
+        label =  ~ nom, # ------------------------------------------------------------- (8)
+        layerId = ~code_insee) %>% # -------------------------------------------------- (9)
+      addLegend(pal = pal, values = ~dist, opacity = 0.7, title = NULL,
+                position = "bottomright") # ------------------------------------------- (10)
+    return(res) # --------------------------------------------------------------------- (11)
+  }
+```
+
+Description
+
+(1) The function takes as input the equipment (eq) from the equipment dataset (data_dpt) that we want to display on the map
+(2) We filter our default dataset to keep only the equipment inputted in the function
+(3) We partition the equipment into 6 different bins, which allows us to define a color scale that will help to visualise different levels of that equipment on the map
+(4) We prepare the dataset and the colors into an object to be used in the leaflet object
+(5) We create a leaflet object that uses the shapefiles that we obtained during the preprocessing step
+(6) Within the addTiles argument, we position ourselves on the map at the desired location (here, Metropolitan France)
+(7) We add in the shapes of the departments that are contained in the shapefiles, as well as the color scale that we chose before
+(8) This enables to obtain the name of the department when hovering over it on the Shiny App map
+(9) We create an ID layer that is added to the map
+(10) We add a legend to the map for legibility
+(11) The function returns a leaflet object which is a map, with the colored scale of the equipment chosen per departments
+
+## Advise
+
+In this tab of the Shiny App, we want to output the result of our data analysis step, showcasing the statistically significant equipment levels that best predict the index chosen by the user. This is done by the predictor_relevant function:
+
+```{r}
+#predictor_relevant <- reactive({
+    #input$Print3
+    #isolate({
+      #equipment_stepwise(input$prediction_advise)
+    #})
+  #})
+```
+
+This function gives the table of relevant predictors and their coefficients by calling the equipment_stepwise function given the index chosen by the user.
+
+Alongside this, we display the map of Metropolitan France with a color coding of the index chosen by the user, outlining the various index levels per departments. This is performed by the map_indic function:
+
+```{r}
+#map_indic <- reactive({
+    #input$Print3
+    #isolate({
+      #get_map(eq=input$prediction_advise, data=indicateurs)
+    #})
+  #})  
+```
+
+This function displays the map of France by calling the get_map function using this time the indicator dataframes.
+
+This enables the user to detect departments with poor index values and the statistically significant equipments identified in the data analysis step for the chosen index. This can help to orientate spending for equipments. 
+
+
+## Explore
+
+In the Explore tab, we give the user full control of the model creation. The user can choose which index to predict and which equipment to serve as variable for prediction. This allows the user to view the single or grouped impact of equipment levels on the various indexes. This is more of an exploration tool to try out different clusters of equipments and see their outcome on the various departments. This is all done by the function predict:
+
+```{r}
+predict <- function(variable,pred){ #  ------------------------------------------------ (1)
+    pred <- fitted(lm(as.formula(paste(variable," ~ ",paste(pred,collapse="+"))),
+                      cbind(data_dpt[,-c(1,2)],indicateurs)),x=TRUE,y=TRUE) # --------- (2)
+    pred <- as.data.frame(pred) %>% pull(pred) #  ------------------------------------- (3)
+    dif <- abs(pred-indicateurs %>% 
+                 pull(variable))/mean(indicateurs %>% pull(variable)) # --------------- (4)
+    
+    bins <-c(0,0.0125,0.025,0.0375,0.05,0.066,0.15,0.5,1) # --------------------------- (5)
+    bins <- bins[!duplicated(bins)]
+    pal <- colorBin("YlOrRd", domain = dif, bins = bins) 
+    res <- leaflet(data = departments_shp) %>% # -------------------------------------- (6)
+      addTiles() %>%
+      setView(lat = 47.8, # ----------------------------------------------------------- (7)
+              lng = 2.5,
+              zoom = 5) %>%
+      addPolygons( # ------------------------------------------------------------------ (8)
+        data = departments_shp,
+        fillColor = ~ pal(dif),
+        weight = 1,
+        opacity = 0.5,
+        color = "white",
+        dashArray = "3",
+        fillOpacity = 0.7,
+        highlight = highlightOptions(color = "red", bringToFront = TRUE),
+        label =  ~ nom, # ------------------------------------------------------------- (9)
+        layerId = ~ code_insee) %>% # ------------------------------------------------- (10)
+      addLegend(pal = pal, values = ~density, opacity = 0.7, title = NULL,
+                position = "bottomright") # ------------------------------------------- (11)
+    return(res) # --------------------------------------------------------------------- (12)
+  }
+```
+
+Description
+
+(1) We choose equipments (pred) to build our regression model on to predict the chosen index (variable)
+(2) We implement our regression model based on the function inputs and obtain the fitted values
+(3) We format the regression output as a vector for further usability
+(4) We obtain the residuals divided the mean of the unscaled variable, which will be plotted on the map for relative comparison
+(5) We create a color scale by separating into bins in order to visualise the different values
+(6) We create a leaflet object that uses the shapefiles that we obtained during the preprocessing step
+(7) Within the addTiles argument, we position ourselves on the map at the desired location (here, Metropolitan France)
+(8) We add in the shapes of the departments that are contained in the shapefiles, as well as the color scale that we chose before
+(9) This enables to obtain the name of the department when hovering over it on the Shiny App map
+(10) We create an ID layer that is added to the map
+(11) We add a legend to the map for legibility
+(12) The function returns a leaflet object which is a map, with the colored scale of the equipment chosen per departments
+
+#FIN#

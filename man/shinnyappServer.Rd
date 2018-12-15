@@ -17,5 +17,5 @@ shinnyappServer(input, output, session)
 shiny app Server
 }
 \description{
-Shinny App Server
+running our Shiny application
 }

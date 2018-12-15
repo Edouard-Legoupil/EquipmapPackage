@@ -1,7 +1,9 @@
-#' Predict
-#'
-#' @param variable indicator you want to predict
-#' @param pred your predictor equipment
+indicateurs <- read.csv("./inst/extdata/indicateur3.csv")
+
+#' @title Visualize the quality of a linear regression model based on chosen predictors
+#' @description This function implements a linear regression to predict the chosen economic indicator with a wide range of equipment as predictors. On the returned map, red departments are those with high residuals in the chosen model. An overall red map mean the predictors are not explanatory enough.
+#' @param variable economic or social indicator you want to predict
+#' @param pred type of equipment used as predictor
 #'
 #' @return returns prediction of a certain index
 #' @export
@@ -9,10 +11,6 @@
 #' @importFrom leaflet leaflet colorBin addTiles setView addPolygons highlightOptions addLegend
 #' @importFrom magrittr %>%
 #' @importFrom stats as.formula fitted lm
-#'
-#' @examples
-
-indicateurs <- read.csv("./inst/extdata/indicateur3.csv")
 
 predict <- function(variable,pred){
   df = cbind(data_dpt,indicateurs[-1])
@@ -21,7 +19,6 @@ predict <- function(variable,pred){
   dif <- abs(pred-df %>% pull(variable))/mean(df %>% pull(variable))
 
   bins <-c(0,0.0125,0.025,0.0375,0.05,0.066,0.15,0.5,1)
-  #bins <- as.vector(c(0:5,10000)*500)
   bins <- bins[!duplicated(bins)]
   pal <- colorBin("YlOrRd", domain = dif, bins = bins)
   res <- leaflet(data = departments_shp) %>%
@@ -37,10 +34,10 @@ predict <- function(variable,pred){
       color = "white",
       dashArray = "3",
       fillOpacity = 0.7,
-      highlight = highlightOptions(color = "red", bringToFront = TRUE),
-      label =  ~ code_insee)%>%
-    addLegend(pal = pal, values = ~density, opacity = 0.7, title = NULL,
-              position = "bottomright")
+      highlightOptions = leaflet::highlightOptions(color = "red", bringToFront = TRUE,stroke = NULL,weight = NULL,
+                                                   opacity = NULL, fill = NULL, fillColor = NULL,
+                                                   fillOpacity = NULL, dashArray = NULL,
+                                                   sendToBack = NULL),
+      label =  ~ code_insee)
   return(res)
-  #cv.lm(new[,-c(1,2)], form.lm = formula(niveau ~.), m=10, dots = FALSE, seed=29, plotit="Residual", printit=TRUE)cross validation -> better
 }

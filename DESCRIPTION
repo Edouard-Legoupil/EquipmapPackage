@@ -18,7 +18,9 @@ Imports:
     magrittr,
     stats,
     rgdal,
-    shiny
+    shiny,
+    glue,
+    rlang
 Suggests: 
     knitr,
     rmarkdown

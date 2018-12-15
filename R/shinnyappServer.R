@@ -1,14 +1,14 @@
-#' Shinny App Server
-#'
+#' @title Shinny App Server
+#' @description running our Shiny application
 #' @param input gives the input
 #' @param output gives the output
 #' @param session gives the session
 #'
 #' @return shiny app Server
 #' @export
-#' @importFrom leaflet renderLeaflet
+#' @importFrom leaflet renderLeaflet leafletProxy clearPopups setView addPopups
 #' @importFrom magrittr %>%
-#' @examples
+#' @importFrom glue glue
 
 shinnyappServer <- function(input, output, session) {
 
@@ -23,7 +23,6 @@ shinnyappServer <- function(input, output, session) {
   })
 
 
-  #chargement de la map que si on appuie sur le bouton
   map <- shiny::reactive({
     input$Print
     isolate({
@@ -34,7 +33,8 @@ shinnyappServer <- function(input, output, session) {
   map_pred <- reactive({
     input$Print2
     isolate({
-      predict(input$prediction,input$predictors)
+      predi <- c(input$predictors1,input$predictors2,input$predictors3,input$predictors4,input$predictors5,input$predictors6,input$predictors7)
+      predict(input$prediction,predi)
     })
   })
 
@@ -48,7 +48,6 @@ shinnyappServer <- function(input, output, session) {
   map_indic <- reactive({
     input$Print3
     isolate({
-      #equipment_stepwise(input$prediction_advise)
       get_map(eq=input$prediction_advise, data=indicateurs)
     })
   })
@@ -65,5 +64,28 @@ shinnyappServer <- function(input, output, session) {
   })
   output$map_indic <- renderLeaflet({
     map_indic()
+  })
+
+
+  observe({
+    click <- input$mymap_shape_click
+    if(is.null(click))
+      return()
+    isolate({
+      leafletProxy("mymap") %>%
+        clearPopups() %>%
+        setView(lng = click$lng, lat = click$lat, zoom = 8) %>%
+        addPopups(glue::glue('The {click$id} department has {signif(get_info(eq = input$Equipement_name, code_insee = click$id)[1], 3)} {input$Equipement_name} per inhabitant, the national median being {signif(get_info(eq = input$Equipement_name, code_insee = click$id)[2], 3)}'), lng = click$lng, lat = click$lat)
+    })
+
+    click2 <- input$map_indic_shape_click
+    if(is.null(click2))
+      return()
+    isolate({
+      leafletProxy("map_indic") %>%
+        clearPopups() %>%
+        setView(lng=click2$lng, lat = click2$lat, zoom = 8) %>%
+        addPopups(glue::glue('The {click2$id} department has {input$prediction_advise} of {signif(get_info(eq = input$prediction_advise, code_insee = click2$id, data = indicateurs)[1], 3)}, the national median being {signif(get_info(eq = input$prediction_advise, code_insee = click2$id, data = indicateurs)[2], 3)}'), lng = click2$lng, lat = click2$lat)
+    })
   })
 }

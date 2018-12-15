@@ -5,16 +5,19 @@ file.create("R/map_density.R")
 
 remotes::install_github("ThinkR-open/attachment")
 attachment::att_to_description()
-
+attachment::create_dependencies_file()
 getwd()
 devtools::install_github("equimapackage")
 
 file.create("R/zzz.R")
+file.create("R/get_info.R")
 
 #library tidyverse for the server
 
 usethis::use_package("rgdal")
 usethis::use_pipe()
 devtools::document()
+
+
 
 install.packages(c("dplyr", "leaflet", "rgdal", "utils", "magrittr", "stats", "devtools","roxygen2", "usethis","testthat","knitr"))
