@@ -11,7 +11,7 @@ Description: Contains functions that aim to identify areas
     lacking certain types of equipment across time.
 License: GPL-3
 Depends: 
-    R (>= 3.5)
+    R (>= 3.4)
 Imports: 
     dplyr,
     leaflet,
